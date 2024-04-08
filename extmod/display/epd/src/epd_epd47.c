@@ -21,6 +21,7 @@
 typedef struct epd47_if_obj_t {
     mp_obj_base_t base;
     uint8_t *jpeg_buf;
+    int rotation; // Added rotation field
 } epd47_if_obj_t;
 
 const mp_obj_type_t epd47_if_type;
@@ -80,6 +81,7 @@ STATIC mp_obj_t epd47_bitmap(size_t n_args, const mp_obj_t *args)
 {
     Rect_t area;
     mp_buffer_info_t bufinfo;
+    epd47_if_obj_t *self = MP_OBJ_TO_PTR(args[0]);
 
     if (n_args < 2 || n_args > 6) return mp_const_none;
 
@@ -89,17 +91,31 @@ STATIC mp_obj_t epd47_bitmap(size_t n_args, const mp_obj_t *args)
     area.width  = mp_obj_get_int(args[4]);
     area.height = mp_obj_get_int(args[5]);
 
+    // Adjust coordinates based on rotation
+    if (self->rotation == 90) {
+        int temp = area.x;
+        area.x = EPD_WIDTH - area.y - area.height;
+        area.y = temp;
+    } else if (self->rotation == 180) {
+        area.x = EPD_WIDTH - area.x - area.width;
+        area.y = EPD_HEIGHT - area.y - area.height;
+    } else if (self->rotation == 270) {
+        int temp = area.x;
+        area.x = area.y;
+        area.y = EPD_HEIGHT - temp - area.width;
+    }
+
     epd_draw_image(area, (uint8_t *)bufinfo.buf, BLACK_ON_WHITE);
 
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(epd47_bitmap_obj, 6, 6, epd47_bitmap);
 
-
 //
 // jpeg file name
 // area.x
 // area.y
+// can not be rotated
 //
 STATIC mp_obj_t epd47_jpeg(size_t n_args, const mp_obj_t *args)
 {
@@ -131,7 +147,7 @@ STATIC mp_obj_t epd47_text(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         {MP_QSTR_text,      MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         {MP_QSTR_cursorx,   MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = -1}            },
         {MP_QSTR_cursory,   MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = -1}            },
-        // {MP_QSTR_font,      MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        {MP_QSTR_rotation,  MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 0}             },
         {MP_QSTR_font_size, MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 12}            },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -140,6 +156,7 @@ STATIC mp_obj_t epd47_text(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
 
     int x = args[1].u_int;
     int y = args[2].u_int;
+    int rotation = args[3].u_int;
     const GFXfont *gfx = &FiraSansRegular12pt;
 
     if (args[0].u_obj == mp_const_none || x == -1 || y == -1)
@@ -152,12 +169,26 @@ STATIC mp_obj_t epd47_text(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         return mp_const_none;
     }
 
-    if (args[3].u_int == 9)
+    if (args[4].u_int == 9)
         gfx = &FiraSansRegular9pt;
-    if (args[3].u_int == 18)
+    if (args[4].u_int == 18)
         gfx = &FiraSansRegular18pt;
-    if (args[3].u_int == 24)
+    if (args[4].u_int == 24)
         gfx = &FiraSansRegular24pt;
+
+    // Adjust coordinates based on rotation
+    if (rotation == 90) {
+        int temp = x;
+        x = EPD_WIDTH - y;
+        y = temp;
+    } else if (rotation == 180) {
+        x = EPD_WIDTH - x;
+        y = EPD_HEIGHT - y;
+    } else if (rotation == 270) {
+        int temp = x;
+        x = y;
+        y = EPD_HEIGHT - temp;
+    }
 
     writeln((GFXfont *)gfx,
             mp_obj_str_get_str(args[0].u_obj),

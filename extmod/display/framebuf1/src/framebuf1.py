@@ -19,10 +19,11 @@ class FrameBuffer():
     bitmap images, which can then be sent to a display.
     '''
 
-    def __init__(self, buffer: bytearray, width: int, height: int):
+    def __init__(self, buffer: bytearray, width: int, height: int, rotation: int = 0):
         self.fb = buffer
         self.width = width
         self.height = height
+        self.rotation = rotation
 
     def fill(self, color: int):
         '''Fill the entire FrameBuffer with the specified color.
@@ -40,17 +41,50 @@ class FrameBuffer():
             y: Vertical position in pixels.
             color: The gray value of the line (0-255).
         '''
-        if x < 0 or x >= self.width:
-            return
-        if y < 0 or y >= self.height:
-            return
-        color = 255 - color
-        pos = y * int(self.width / 2) + int(x / 2)
-        if int(x % 2):
-            self.fb[pos] = (self.fb[pos] & 0x0F) | (color & 0xF0)
-        else:
-            self.fb[pos] = (self.fb[pos] & 0xF0) | (color >> 4 & 0x0F)
-
+        if self.rotation == 0:
+            if x < 0 or x >= self.width:
+                return
+            if y < 0 or y >= self.height:
+                return
+            color = 255 - color
+            pos = y * int(self.width / 2) + int(x / 2)
+            if int(x % 2):
+                self.fb[pos] = (self.fb[pos] & 0x0F) | (color & 0xF0)
+            else:
+                self.fb[pos] = (self.fb[pos] & 0xF0) | (color >> 4 & 0x0F)
+        elif self.rotation == 90:
+            if x < 0 or x >= self.height:
+                return
+            if y < 0 or y >= self.width:
+                return
+            color = 255 - color
+            pos = x * int(self.height / 2) + int(y / 2)
+            if int(y % 2):
+                self.fb[pos] = (self.fb[pos] & 0xF0) | (color & 0xF0)
+            else:
+                self.fb[pos] = (self.fb[pos] & 0x0F) | (color >> 4 & 0x0F)
+        elif self.rotation == 180:
+            if x < 0 or x >= self.width:
+                return
+            if y < 0 or y >= self.height:
+                return
+            color = 255 - color
+            pos = (self.height - y - 1) * int(self.width / 2) + int((self.width - x - 1) / 2)
+            if int(x % 2):
+                self.fb[pos] = (self.fb[pos] & 0x0F) | (color & 0xF0)
+            else:
+                self.fb[pos] = (self.fb[pos] & 0xF0) | (color >> 4 & 0x0F)
+        elif self.rotation == 270:
+            if x < 0 or x >= self.height:
+                return
+            if y < 0 or y >= self.width:
+                return
+            color = 255 - color
+            pos = (self.width - y - 1) * int(self.height / 2) + int(x / 2)
+            if int(y % 2):
+                self.fb[pos] = (self.fb[pos] & 0xF0) | (color & 0xF0)
+            else:
+                self.fb[pos] = (self.fb[pos] & 0x0F) | (color >> 4 & 0x0F)
     def hline(self, x: int, y: int, length: int, color: int):
         '''Draw a horizontal line to a given framebuffer.
 
